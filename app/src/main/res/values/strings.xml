@@ -1,0 +1,10 @@
+<resources>
+    <string name="app_name">Mokay World</string>
+    <string name="sign_in_google">Entrar con Google</string>
+    <string name="quick_save_success">Guardado rápido en la nube</string>
+    <string name="title_tagline">LA CHISPA QUE INICIA TODO</string>
+    <string name="menu_characters">Héroes</string>
+    <string name="menu_gestures">Gestos</string>
+    <string name="menu_workshop">Taller</string>
+    <string name="menu_saves">Guardado</string>
+</resources>

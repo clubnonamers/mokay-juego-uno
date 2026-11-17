@@ -1,0 +1,114 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Global Safety Net (Default-Deny)
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function isOwner(userId) {
+      return request.auth != null && request.auth.uid == userId;
+    }
+
+    function isValidZoneId(zoneId) {
+      return zoneId in [
+        'ALDEA_MOKAY',
+        'BOSQUE_ESMERALDA',
+        'DESIERTO_DORADO',
+        'CAVERNAS_MINA',
+        'BARRIO_SOMBRAVIA'
+      ];
+    }
+
+    function hasOnlyAllowedSaveKeys(data) {
+      return data.keys().hasOnly([
+        'userId', 'slotLabel', 'heroName', 'headgearId', 'jacketId',
+        'pantsShoesId', 'backpackId', 'activeSkullId', 'secondarySkullId',
+        'unlockedSkulls', 'equippedRelics', 'heroLevel', 'heroXp', 'statPoints',
+        'atkBonus', 'hpBonus', 'spdBonus', 'weaponLevel', 'shieldLevel',
+        'worldSeed', 'playerX', 'playerY', 'currentZone', 'currentRoomIndex',
+        'roomsClearedCount', 'skullSwapsCount', 'sparksCurrency',
+        'totalEnemiesDefeated', 'molotovBossDefeated', 'playTimeSeconds',
+        'equippedPets', 'unlockedPets', 'unlockedCosmetics', 'unlockedGestures',
+        'completedMissionIds', 'claimedMissionIds', 'inventoryCounts',
+        'createdAt', 'updatedAt'
+      ]);
+    }
+
+    function isValidSaveIdentity(data, userId) {
+      return data.userId == userId &&
+             data.userId == request.auth.uid &&
+             data.slotLabel is string && data.slotLabel.size() >= 1 && data.slotLabel.size() <= 40 &&
+             data.heroName is string && data.heroName.size() >= 1 && data.heroName.size() <= 20;
+    }
+
+    function isValidSaveGearAndSkulls(data) {
+      return data.headgearId is string && data.jacketId is string &&
+             data.pantsShoesId is string && data.backpackId is string &&
+             data.activeSkullId is string && data.secondarySkullId is string &&
+             data.unlockedSkulls is list && data.unlockedSkulls.size() <= 10 &&
+             data.equippedRelics is list && data.equippedRelics.size() <= 6;
+    }
+
+    function isValidSaveStats(data) {
+      return data.heroLevel is int && data.heroLevel >= 1 && data.heroLevel <= 99 &&
+             data.heroXp is int && data.heroXp >= 0 &&
+             data.statPoints is int && data.statPoints >= 0 &&
+             data.atkBonus is int && data.hpBonus is int && data.spdBonus is int &&
+             data.weaponLevel is int && data.weaponLevel >= 1 && data.weaponLevel <= 5 &&
+             data.shieldLevel is int && data.shieldLevel >= 1 && data.shieldLevel <= 5;
+    }
+
+    function isValidSaveWorld(data) {
+      return data.worldSeed is int && data.worldSeed >= 1 &&
+             data.playerX is number && data.playerX >= 0 && data.playerX <= 10000 &&
+             data.playerY is number && data.playerY >= 0 && data.playerY <= 10000 &&
+             data.currentZone is string && isValidZoneId(data.currentZone) &&
+             data.currentRoomIndex is int && data.currentRoomIndex >= 0 &&
+             data.roomsClearedCount is int && data.skullSwapsCount is int &&
+             data.sparksCurrency is int && data.sparksCurrency >= 0 &&
+             data.totalEnemiesDefeated is int && data.molotovBossDefeated is bool &&
+             data.playTimeSeconds is int;
+    }
+
+    function isValidSaveCollections(data) {
+      return data.equippedPets is list && data.equippedPets.size() <= 3 &&
+             data.unlockedPets is list && data.unlockedCosmetics is list &&
+             data.unlockedGestures is list && data.completedMissionIds is list &&
+             data.claimedMissionIds is list && data.inventoryCounts is map &&
+             data.createdAt is timestamp && data.createdAt <= request.time &&
+             data.updatedAt is timestamp && data.updatedAt <= request.time;
+    }
+
+    function isValidSaveSlot(data, userId) {
+      return hasOnlyAllowedSaveKeys(data) &&
+             isValidSaveIdentity(data, userId) &&
+             isValidSaveGearAndSkulls(data) &&
+             isValidSaveStats(data) &&
+             isValidSaveWorld(data) &&
+             isValidSaveCollections(data);
+    }
+
+    match /users/{userId}/save_slots/{slotId} {
+      allow get: if isOwner(userId) && isValidId(slotId);
+      allow list: if isOwner(userId);
+
+      allow create: if isOwner(userId) &&
+                       isValidId(slotId) &&
+                       request.resource.data.keys().size() == 39 &&
+                       isValidSaveSlot(request.resource.data, userId);
+
+      allow update: if isOwner(userId) &&
+                       isValidId(slotId) &&
+                       !request.resource.data.diff(resource.data).affectedKeys().hasAny(['userId', 'createdAt']) &&
+                       request.resource.data.createdAt == resource.data.createdAt &&
+                       isValidSaveSlot(request.resource.data, userId);
+
+      allow delete: if isOwner(userId) && isValidId(slotId);
+    }
+  }
+}

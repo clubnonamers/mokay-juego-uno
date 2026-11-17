@@ -1,0 +1,6 @@
+{
+  "name": "Mokay World",
+  "description": "Videojuego 2D pixel art retro de mundo abierto con exploración interactiva, combate basado en gestos, progresión y guardado rápido con los personajes de Mokay.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
